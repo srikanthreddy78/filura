@@ -1,0 +1,252 @@
+{
+  "server": "github",
+  "detail": "mock GitHub MCP server dump",
+  "tools": [
+    {
+      "name": "list_repos",
+      "description": "List repositories the authenticated user can access.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "visibility": { "type": "string", "enum": ["all", "public", "private"] }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "repos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "repo_id": { "type": "integer", "description": "Unique repository id" },
+                "full_name": { "type": "string" },
+                "default_branch": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "get_repo",
+      "description": "Get details for a single repository.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo_id": { "type": "integer", "description": "Repository id" }
+        },
+        "required": ["repo_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "repo_id": { "type": "integer" },
+          "full_name": { "type": "string" },
+          "description": { "type": "string" },
+          "default_branch": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "list_issues",
+      "description": "List issues in a repository.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo_id": { "type": "integer" },
+          "state": { "type": "string", "enum": ["open", "closed", "all"] }
+        },
+        "required": ["repo_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "issue_number": { "type": "integer" },
+                "title": { "type": "string" },
+                "state": { "type": "string" },
+                "assignee": { "type": "string", "description": "Login of the assigned user" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "get_issue",
+      "description": "Get a single issue with full body and metadata.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo_id": { "type": "integer" },
+          "issue_number": { "type": "integer" }
+        },
+        "required": ["repo_id", "issue_number"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issue_number": { "type": "integer" },
+          "title": { "type": "string" },
+          "body": { "type": "string" },
+          "state": { "type": "string" },
+          "assignee": { "type": "string", "description": "Login of the assigned user" },
+          "html_url": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "create_issue",
+      "description": "Create a new issue in a repository.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo_id": { "type": "integer" },
+          "title": { "type": "string" },
+          "body": { "type": "string" },
+          "assignee": { "type": "string", "description": "Login of the user to assign" }
+        },
+        "required": ["repo_id", "title", "assignee"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issue_number": { "type": "integer" },
+          "html_url": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "add_issue_comment",
+      "description": "Add a comment to an issue.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo_id": { "type": "integer" },
+          "issue_number": { "type": "integer" },
+          "body": { "type": "string" }
+        },
+        "required": ["repo_id", "issue_number", "body"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "comment_id": { "type": "integer" },
+          "html_url": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "list_pull_requests",
+      "description": "List pull requests in a repository.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo_id": { "type": "integer" },
+          "state": { "type": "string", "enum": ["open", "closed", "all"] }
+        },
+        "required": ["repo_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pulls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pull_number": { "type": "integer" },
+                "title": { "type": "string" },
+                "head_sha": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "merge_pull_request",
+      "description": "Merge a pull request.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo_id": { "type": "integer" },
+          "pull_number": { "type": "integer" },
+          "commit_message": { "type": "string" }
+        },
+        "required": ["repo_id", "pull_number"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "merged": { "type": "boolean" },
+          "merge_sha": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "get_commit",
+      "description": "Get a commit by SHA.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo_id": { "type": "integer" },
+          "commit_sha": { "type": "string" }
+        },
+        "required": ["repo_id", "commit_sha"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "commit_sha": { "type": "string" },
+          "commit_message": { "type": "string" },
+          "author_login": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "create_branch",
+      "description": "Create a branch from a commit SHA.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo_id": { "type": "integer" },
+          "branch_name": { "type": "string" },
+          "from_sha": { "type": "string", "description": "Commit SHA to branch from" }
+        },
+        "required": ["repo_id", "branch_name", "from_sha"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ref": { "type": "string" },
+          "commit_sha": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "get_deployment",
+      "description": "Get a deployment by id. NOTE: nothing in this catalog produces a deployment_id — planted dead node.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "deployment_id": { "type": "integer" }
+        },
+        "required": ["deployment_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "deployment_id": { "type": "integer" },
+          "environment": { "type": "string" },
+          "state": { "type": "string" }
+        }
+      }
+    }
+  ]
+}

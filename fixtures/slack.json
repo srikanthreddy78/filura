@@ -1,0 +1,178 @@
+{
+  "server": "slack",
+  "detail": "mock Slack MCP server dump",
+  "tools": [
+    {
+      "name": "list_channels",
+      "description": "List Slack channels in the workspace.",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "channel_id": { "type": "string" },
+                "channel_name": { "type": "string" },
+                "is_private": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "post_message",
+      "description": "Post a message to a Slack channel.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "channel_id": { "type": "string" },
+          "text": { "type": "string" }
+        },
+        "required": ["channel_id", "text"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "message_ts": { "type": "string", "description": "Timestamp id of the posted message" },
+          "channel_id": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "reply_in_thread",
+      "description": "Reply to a message thread.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "channel_id": { "type": "string" },
+          "thread_ts": { "type": "string", "description": "Timestamp id of the parent message" },
+          "text": { "type": "string" }
+        },
+        "required": ["channel_id", "thread_ts", "text"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "message_ts": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "add_reaction",
+      "description": "Add an emoji reaction to a message.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "channel_id": { "type": "string" },
+          "message_ts": { "type": "string" },
+          "emoji_name": { "type": "string" }
+        },
+        "required": ["channel_id", "message_ts", "emoji_name"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "name": "list_users",
+      "description": "List members of the Slack workspace.",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "user_id": { "type": "string" },
+                "real_name": { "type": "string" },
+                "email": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "get_user_by_email",
+      "description": "Look up a Slack user by email address.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "format": "email" }
+        },
+        "required": ["email"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": { "type": "string" },
+          "real_name": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "open_dm",
+      "description": "Open a direct message conversation with a user.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": { "type": "string" }
+        },
+        "required": ["user_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "channel_id": { "type": "string", "description": "DM channel id" }
+        }
+      }
+    },
+    {
+      "name": "upload_file",
+      "description": "Upload a file to a channel.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "channel_id": { "type": "string" },
+          "file_path": { "type": "string" },
+          "comment": { "type": "string" }
+        },
+        "required": ["channel_id", "file_path"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": { "type": "string" },
+          "permalink": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "delete_scheduled_message",
+      "description": "Delete a scheduled message. NOTE: nothing in this catalog produces a scheduled_message_id — planted dead node.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "channel_id": { "type": "string" },
+          "scheduled_message_id": { "type": "string" }
+        },
+        "required": ["channel_id", "scheduled_message_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" }
+        }
+      }
+    }
+  ]
+}

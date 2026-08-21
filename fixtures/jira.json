@@ -1,0 +1,267 @@
+{
+  "server": "jira",
+  "detail": "mock Jira MCP server dump (camelCase naming, unlike github fixture)",
+  "tools": [
+    {
+      "name": "listProjects",
+      "description": "List all Jira projects visible to the user.",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "projectId": { "type": "string", "description": "Project identifier" },
+                "projectKey": { "type": "string" },
+                "projectName": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "getProject",
+      "description": "Get one project's details.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectId": { "type": "string" }
+        },
+        "required": ["projectId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "projectId": { "type": "string" },
+          "projectKey": { "type": "string" },
+          "projectName": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "listIssueTypes",
+      "description": "List the issue types available in a project.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectId": { "type": "string" }
+        },
+        "required": ["projectId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issueTypes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "issueTypeId": { "type": "string" },
+                "issueTypeName": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "createIssue",
+      "description": "Create a Jira issue (ticket) in a project.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectId": { "type": "string", "description": "Project to create the issue in" },
+          "summary": { "type": "string", "description": "One-line summary" },
+          "description": { "type": "string" },
+          "issueTypeId": { "type": "string", "description": "Issue type (bug, task...)" },
+          "assigneeAccountId": { "type": "string", "description": "Account id of the assignee" }
+        },
+        "required": ["projectId", "summary", "issueTypeId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issueId": { "type": "string" },
+          "issueKey": { "type": "string" },
+          "self": { "type": "string", "description": "URL of the created issue" }
+        }
+      }
+    },
+    {
+      "name": "getIssue",
+      "description": "Get a Jira issue by key.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issueKey": { "type": "string" }
+        },
+        "required": ["issueKey"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issueId": { "type": "string" },
+          "issueKey": { "type": "string" },
+          "summary": { "type": "string" },
+          "statusName": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "searchIssues",
+      "description": "Search issues with a JQL query.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jql": { "type": "string", "description": "JQL query string" }
+        },
+        "required": ["jql"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "issueId": { "type": "string" },
+                "issueKey": { "type": "string" },
+                "summary": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "listTransitions",
+      "description": "List the workflow transitions currently available for an issue.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issueKey": { "type": "string" }
+        },
+        "required": ["issueKey"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "transitions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transitionId": { "type": "string" },
+                "transitionName": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "transitionIssue",
+      "description": "Move an issue through a workflow transition.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issueKey": { "type": "string" },
+          "transitionId": { "type": "string" }
+        },
+        "required": ["issueKey", "transitionId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "name": "addComment",
+      "description": "Add a comment to a Jira issue.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issueKey": { "type": "string" },
+          "commentBody": { "type": "string" }
+        },
+        "required": ["issueKey", "commentBody"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "commentId": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "searchUsers",
+      "description": "Search Jira users by name or email.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string" }
+        },
+        "required": ["query"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "accountId": { "type": "string", "description": "Unique account id of the user" },
+                "displayName": { "type": "string" },
+                "emailAddress": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "assignIssue",
+      "description": "Assign a Jira issue to a user.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issueKey": { "type": "string" },
+          "accountId": { "type": "string", "description": "Account id of the new assignee" }
+        },
+        "required": ["issueKey", "accountId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "name": "getAttachment",
+      "description": "Download an attachment by id. NOTE: nothing in this catalog produces an attachmentId — planted dead node.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "attachmentId": { "type": "string" }
+        },
+        "required": ["attachmentId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "fileName": { "type": "string" },
+          "contentUrl": { "type": "string" }
+        }
+      }
+    }
+  ]
+}

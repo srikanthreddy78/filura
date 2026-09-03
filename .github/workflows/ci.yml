@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  evaluate:
+    name: inference quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Ingest fixtures and build graph
+        run: |
+          npx tsx src/cli.ts ingest fixtures/*.json
+          npx tsx src/cli.ts build
+      - name: Evaluate against ground truth
+        run: npx tsx src/cli.ts eval --show-errors
+      - name: Benchmark at 700 tools
+        run: npx tsx src/cli.ts bench --tools 700

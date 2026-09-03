@@ -28,6 +28,11 @@ import {
 } from "./providers/resolve.js";
 import { startServer } from "./server.js";
 import { startMcpServer } from "./mcp-server.js";
+import { readFile } from "node:fs/promises";
+import { evaluateEdges } from "./eval/evaluate.js";
+import { evaluateRetrieval, type RetrievalSpec } from "./eval/retrieval.js";
+import { generateSyntheticCatalog } from "./eval/synthetic.js";
+import type { GroundTruth } from "./eval/types.js";
 
 const program = new Command();
 program
@@ -280,6 +285,134 @@ program
     const graph = await store.loadGraph();
     // stdout is the MCP transport — never log to it here.
     await startMcpServer({ graph });
+  });
+
+program
+  .command("eval")
+  .description(
+    "Measure edge-inference accuracy against hand-labeled ground truth (precision/recall/F1)",
+  )
+  .option("--truth <path>", "ground truth file", "eval/ground-truth.json")
+  .option("--include-ambiguous", "also judge unconfirmed ambiguous-band edges")
+  .option("--show-errors", "list every missed and spurious edge")
+  .option("--json", "raw JSON output")
+  .action(
+    async (options: {
+      truth: string;
+      includeAmbiguous?: boolean;
+      showErrors?: boolean;
+      json?: boolean;
+    }) => {
+      const truth = JSON.parse(
+        await readFile(options.truth, "utf8"),
+      ) as GroundTruth;
+      const tools = (
+        await Promise.all(truth.catalog.map((file) => ingestFile(file)))
+      ).flat();
+      const { graph } = await buildGraph(tools, {
+        embeddingProvider: resolveEmbeddingProvider(),
+        adjudicator: resolveAdjudicator(),
+      });
+
+      const retrievalSpec = (truth as unknown as { retrieval?: RetrievalSpec })
+        .retrieval;
+      const strict = evaluateEdges(graph, truth, { includeAmbiguous: false });
+      const loose = evaluateEdges(graph, truth, { includeAmbiguous: true });
+      const chosen = options.includeAmbiguous ? loose : strict;
+
+      if (options.json) {
+        console.log(JSON.stringify({ strict, loose }, null, 2));
+        return;
+      }
+
+      const pct = (n: number) => (n * 100).toFixed(1) + "%";
+      const row = (label: string, m: typeof strict) =>
+        `  ${label.padEnd(22)} ${pct(m.precision).padStart(7)} ${pct(m.recall).padStart(8)} ${pct(m.f1).padStart(7)}   ${m.truePositives}/${m.falsePositives}/${m.falseNegatives}`;
+
+      console.log(`Edge inference vs. ${truth.expectations.length} hand-labeled inputs (${tools.length} tools)\n`);
+      console.log(`  ${"mode".padEnd(22)} ${"prec".padStart(7)} ${"recall".padStart(8)} ${"F1".padStart(7)}   TP/FP/FN`);
+      console.log(row("trusted (default)", strict));
+      console.log(row("+ ambiguous band", loose));
+      console.log(
+        `\n  Correctly unreachable: ${chosen.deadInputsCorrect}/${chosen.deadInputsTotal} inputs with no valid producer`,
+      );
+
+      if (retrievalSpec) {
+        const retrieval = await evaluateRetrieval(graph, retrievalSpec);
+        console.log(
+          `\nGoal retrieval (budget ${retrievalSpec.maxTools} tools): ` +
+            `${retrieval.goalsSolved}/${retrieval.goalsTotal} goals fully solved, ` +
+            `${pct(retrieval.toolRecall)} of required tools retrieved`,
+        );
+        for (const result of retrieval.results.filter((r) => !r.solved)) {
+          console.log(
+            `    UNSOLVED "${result.goal}" — missing ${[
+              ...result.missingRequired,
+              ...result.unsatisfiedGroups.map((g) => `one of [${g.join(", ")}]`),
+            ].join(", ")}`,
+          );
+        }
+      }
+
+      if (options.showErrors) {
+        if (chosen.missed.length > 0) {
+          console.log(`\n  Missed (${chosen.missed.length}):`);
+          for (const m of chosen.missed) console.log(`    ${m.input} <- ${m.producer}`);
+        }
+        if (chosen.spurious.length > 0) {
+          console.log(`\n  Spurious (${chosen.spurious.length}):`);
+          for (const s of chosen.spurious) {
+            console.log(`    ${s.input} <- ${s.producer}  [${s.provenance} ${s.score}]`);
+          }
+        }
+      } else if (chosen.missed.length + chosen.spurious.length > 0) {
+        console.log(`\n  ${chosen.missed.length} missed, ${chosen.spurious.length} spurious — rerun with --show-errors`);
+      }
+    },
+  );
+
+program
+  .command("bench")
+  .description("Benchmark build and query cost on a synthetic catalog at scale")
+  .option("--tools <n>", "catalog size", "700")
+  .option("--queries <n>", "queries to time", "20")
+  .action(async (options: { tools: string; queries: string }) => {
+    const size = Number(options.tools);
+    const queryCount = Number(options.queries);
+    const tools = generateSyntheticCatalog(size);
+
+    const buildStart = performance.now();
+    const { graph, stats } = await buildGraph(tools);
+    const buildMs = performance.now() - buildStart;
+
+    const goals = [
+      "update a customer record",
+      "find an invoice and update it",
+      "escalate a support ticket",
+      "look up a lead and update the deal",
+      "check a failing deployment",
+    ];
+    const provider = resolveEmbeddingProvider();
+    const latencies: number[] = [];
+    for (let i = 0; i < queryCount; i++) {
+      const goal = goals[i % goals.length]!;
+      const start = performance.now();
+      await querySubgraph(graph, goal, { maxTools: 10, embeddingProvider: provider });
+      latencies.push(performance.now() - start);
+    }
+    latencies.sort((a, b) => a - b);
+    const at = (q: number) => latencies[Math.min(latencies.length - 1, Math.floor(latencies.length * q))]!;
+
+    console.log(`Catalog: ${stats.tools} tools, ${new Set(tools.map((t) => t.source.server)).size} servers`);
+    console.log(`\nBuild`);
+    console.log(`  ordered tool pairs:        ${stats.orderedPairs.toLocaleString()}`);
+    console.log(`  type-compatible candidates:${stats.prunedCandidates.toLocaleString().padStart(11)}`);
+    console.log(`  edges inferred:            ${stats.edges.toLocaleString()}`);
+    console.log(`  pairs needing an LLM call: ${(stats.byProvenance.ambiguous + stats.adjudicatedPairs).toLocaleString()}` +
+      `  (${(((stats.byProvenance.ambiguous + stats.adjudicatedPairs) / Math.max(1, stats.prunedCandidates)) * 100).toFixed(2)}% of candidates)`);
+    console.log(`  wall time:                 ${(buildMs / 1000).toFixed(2)}s`);
+    console.log(`\nQuery latency over ${queryCount} runs (budget 200ms)`);
+    console.log(`  p50 ${at(0.5).toFixed(1)}ms   p95 ${at(0.95).toFixed(1)}ms   max ${latencies[latencies.length - 1]!.toFixed(1)}ms`);
   });
 
 program.parseAsync(process.argv).catch((error: unknown) => {

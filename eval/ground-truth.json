@@ -1,0 +1,458 @@
+{
+  "$comment": "Hand-labeled ground truth for the fixture catalog. For each required input that needs an upstream producer, `producers` lists every output field that genuinely carries that value. Derived by reading the fixture schemas, NOT by recording what Filura outputs -- otherwise the evaluation would be circular. Free-text inputs an agent supplies itself (title, summary, body, jql, reason, ...) are deliberately out of scope.",
+  "catalog": [
+    "fixtures/github.json",
+    "fixtures/jira.json",
+    "fixtures/slack.json",
+    "fixtures/acme-crm.json"
+  ],
+  "expectations": [
+    {
+      "input": "github.get_repo.repo_id",
+      "producers": [
+        "github.list_repos.repos[].repo_id"
+      ]
+    },
+    {
+      "input": "github.list_issues.repo_id",
+      "producers": [
+        "github.list_repos.repos[].repo_id",
+        "github.get_repo.repo_id"
+      ]
+    },
+    {
+      "input": "github.get_issue.repo_id",
+      "producers": [
+        "github.list_repos.repos[].repo_id",
+        "github.get_repo.repo_id"
+      ]
+    },
+    {
+      "input": "github.get_issue.issue_number",
+      "producers": [
+        "github.list_issues.issues[].issue_number",
+        "github.create_issue.issue_number"
+      ]
+    },
+    {
+      "input": "github.create_issue.repo_id",
+      "producers": [
+        "github.list_repos.repos[].repo_id",
+        "github.get_repo.repo_id"
+      ]
+    },
+    {
+      "input": "github.create_issue.assignee",
+      "producers": [
+        "github.list_issues.issues[].assignee",
+        "github.get_issue.assignee",
+        "github.get_commit.author_login"
+      ]
+    },
+    {
+      "input": "github.add_issue_comment.repo_id",
+      "producers": [
+        "github.list_repos.repos[].repo_id",
+        "github.get_repo.repo_id"
+      ]
+    },
+    {
+      "input": "github.add_issue_comment.issue_number",
+      "producers": [
+        "github.list_issues.issues[].issue_number",
+        "github.get_issue.issue_number",
+        "github.create_issue.issue_number"
+      ]
+    },
+    {
+      "input": "github.list_pull_requests.repo_id",
+      "producers": [
+        "github.list_repos.repos[].repo_id",
+        "github.get_repo.repo_id"
+      ]
+    },
+    {
+      "input": "github.merge_pull_request.repo_id",
+      "producers": [
+        "github.list_repos.repos[].repo_id",
+        "github.get_repo.repo_id"
+      ]
+    },
+    {
+      "input": "github.merge_pull_request.pull_number",
+      "producers": [
+        "github.list_pull_requests.pulls[].pull_number"
+      ]
+    },
+    {
+      "input": "github.get_commit.repo_id",
+      "producers": [
+        "github.list_repos.repos[].repo_id",
+        "github.get_repo.repo_id"
+      ]
+    },
+    {
+      "input": "github.get_commit.commit_sha",
+      "producers": [
+        "github.create_branch.commit_sha",
+        "github.merge_pull_request.merge_sha",
+        "github.list_pull_requests.pulls[].head_sha"
+      ]
+    },
+    {
+      "input": "github.create_branch.repo_id",
+      "producers": [
+        "github.list_repos.repos[].repo_id",
+        "github.get_repo.repo_id"
+      ]
+    },
+    {
+      "input": "github.create_branch.from_sha",
+      "producers": [
+        "github.get_commit.commit_sha",
+        "github.merge_pull_request.merge_sha",
+        "github.list_pull_requests.pulls[].head_sha"
+      ]
+    },
+    {
+      "input": "github.get_deployment.deployment_id",
+      "producers": [],
+      "note": "planted dead node"
+    },
+    {
+      "input": "jira.getProject.projectId",
+      "producers": [
+        "jira.listProjects.projects[].projectId"
+      ]
+    },
+    {
+      "input": "jira.listIssueTypes.projectId",
+      "producers": [
+        "jira.listProjects.projects[].projectId",
+        "jira.getProject.projectId"
+      ]
+    },
+    {
+      "input": "jira.createIssue.projectId",
+      "producers": [
+        "jira.listProjects.projects[].projectId",
+        "jira.getProject.projectId"
+      ]
+    },
+    {
+      "input": "jira.createIssue.issueTypeId",
+      "producers": [
+        "jira.listIssueTypes.issueTypes[].issueTypeId"
+      ]
+    },
+    {
+      "input": "jira.getIssue.issueKey",
+      "producers": [
+        "jira.createIssue.issueKey",
+        "jira.searchIssues.issues[].issueKey"
+      ]
+    },
+    {
+      "input": "jira.listTransitions.issueKey",
+      "producers": [
+        "jira.createIssue.issueKey",
+        "jira.getIssue.issueKey",
+        "jira.searchIssues.issues[].issueKey"
+      ]
+    },
+    {
+      "input": "jira.transitionIssue.issueKey",
+      "producers": [
+        "jira.createIssue.issueKey",
+        "jira.getIssue.issueKey",
+        "jira.searchIssues.issues[].issueKey"
+      ]
+    },
+    {
+      "input": "jira.transitionIssue.transitionId",
+      "producers": [
+        "jira.listTransitions.transitions[].transitionId"
+      ]
+    },
+    {
+      "input": "jira.addComment.issueKey",
+      "producers": [
+        "jira.createIssue.issueKey",
+        "jira.getIssue.issueKey",
+        "jira.searchIssues.issues[].issueKey"
+      ]
+    },
+    {
+      "input": "jira.assignIssue.issueKey",
+      "producers": [
+        "jira.createIssue.issueKey",
+        "jira.getIssue.issueKey",
+        "jira.searchIssues.issues[].issueKey"
+      ]
+    },
+    {
+      "input": "jira.assignIssue.accountId",
+      "producers": [
+        "jira.searchUsers.users[].accountId"
+      ]
+    },
+    {
+      "input": "jira.getAttachment.attachmentId",
+      "producers": [],
+      "note": "planted dead node"
+    },
+    {
+      "input": "slack.post_message.channel_id",
+      "producers": [
+        "slack.list_channels.channels[].channel_id",
+        "slack.open_dm.channel_id",
+        "acme-crm.postMessage.channel_id"
+      ]
+    },
+    {
+      "input": "slack.reply_in_thread.channel_id",
+      "producers": [
+        "slack.list_channels.channels[].channel_id",
+        "slack.open_dm.channel_id",
+        "slack.post_message.channel_id",
+        "acme-crm.postMessage.channel_id"
+      ]
+    },
+    {
+      "input": "slack.reply_in_thread.thread_ts",
+      "producers": [
+        "slack.post_message.message_ts",
+        "acme-crm.postMessage.message_ts"
+      ]
+    },
+    {
+      "input": "slack.add_reaction.channel_id",
+      "producers": [
+        "slack.list_channels.channels[].channel_id",
+        "slack.open_dm.channel_id",
+        "slack.post_message.channel_id",
+        "acme-crm.postMessage.channel_id"
+      ]
+    },
+    {
+      "input": "slack.add_reaction.message_ts",
+      "producers": [
+        "slack.post_message.message_ts",
+        "slack.reply_in_thread.message_ts",
+        "acme-crm.postMessage.message_ts"
+      ]
+    },
+    {
+      "input": "slack.get_user_by_email.email",
+      "producers": [
+        "slack.list_users.members[].email",
+        "jira.searchUsers.users[].emailAddress",
+        "acme-crm.listCustomers.customers[].owner_email",
+        "acme-crm.getCustomer.owner_email"
+      ]
+    },
+    {
+      "input": "slack.open_dm.user_id",
+      "producers": [
+        "slack.list_users.members[].user_id",
+        "slack.get_user_by_email.user_id"
+      ]
+    },
+    {
+      "input": "slack.upload_file.channel_id",
+      "producers": [
+        "slack.list_channels.channels[].channel_id",
+        "slack.open_dm.channel_id",
+        "slack.post_message.channel_id",
+        "acme-crm.postMessage.channel_id"
+      ]
+    },
+    {
+      "input": "slack.delete_scheduled_message.channel_id",
+      "producers": [
+        "slack.list_channels.channels[].channel_id",
+        "slack.open_dm.channel_id",
+        "slack.post_message.channel_id",
+        "acme-crm.postMessage.channel_id"
+      ]
+    },
+    {
+      "input": "slack.delete_scheduled_message.scheduled_message_id",
+      "producers": [],
+      "note": "planted dead node"
+    },
+    {
+      "input": "acme-crm.getCustomer.customer_id",
+      "producers": [
+        "acme-crm.listCustomers.customers[].customer_id",
+        "acme-crm.getTicket.customer_id"
+      ]
+    },
+    {
+      "input": "acme-crm.createTicket.customer_id",
+      "producers": [
+        "acme-crm.listCustomers.customers[].customer_id",
+        "acme-crm.getCustomer.customer_id",
+        "acme-crm.getTicket.customer_id"
+      ]
+    },
+    {
+      "input": "acme-crm.getTicket.ticket_id",
+      "producers": [
+        "acme-crm.createTicket.ticket_id",
+        "acme-crm.escalateTicket.ticket_id"
+      ]
+    },
+    {
+      "input": "acme-crm.escalateTicket.ticket_id",
+      "producers": [
+        "acme-crm.createTicket.ticket_id",
+        "acme-crm.getTicket.ticket_id"
+      ]
+    },
+    {
+      "input": "acme-crm.escalateTicket.escalation_level_id",
+      "producers": [
+        "acme-crm.listEscalationLevels.levels[].escalation_level_id"
+      ]
+    },
+    {
+      "input": "acme-crm.postMessage.channel_id",
+      "producers": [
+        "slack.list_channels.channels[].channel_id",
+        "slack.open_dm.channel_id",
+        "slack.post_message.channel_id"
+      ]
+    },
+    {
+      "input": "acme-crm.getInvoice.invoice_id",
+      "producers": [],
+      "note": "planted dead node"
+    }
+  ],
+  "retrieval": {
+    "$comment": "Per goal: `required` tools must ALL appear in the retrieved subgraph; each `anyOf` group must contribute at least one tool. These encode the dependency closure a correct answer needs, not merely the most similar tools.",
+    "maxTools": 8,
+    "goals": [
+      {
+        "goal": "create a jira issue in the right project",
+        "required": [
+          "jira.createIssue",
+          "jira.listIssueTypes"
+        ],
+        "anyOf": [
+          [
+            "jira.listProjects",
+            "jira.getProject"
+          ]
+        ]
+      },
+      {
+        "goal": "escalate an urgent support ticket for a customer",
+        "required": [
+          "acme-crm.escalateTicket",
+          "acme-crm.listEscalationLevels"
+        ],
+        "anyOf": [
+          [
+            "acme-crm.getTicket",
+            "acme-crm.createTicket"
+          ]
+        ]
+      },
+      {
+        "goal": "assign a jira issue to a user",
+        "required": [
+          "jira.assignIssue",
+          "jira.searchUsers"
+        ],
+        "anyOf": []
+      },
+      {
+        "goal": "post a message in a slack channel",
+        "required": [
+          "slack.post_message"
+        ],
+        "anyOf": [
+          [
+            "slack.list_channels",
+            "slack.open_dm"
+          ]
+        ]
+      },
+      {
+        "goal": "reply to a slack message thread",
+        "required": [
+          "slack.reply_in_thread"
+        ],
+        "anyOf": [
+          [
+            "slack.post_message"
+          ],
+          [
+            "slack.list_channels",
+            "slack.open_dm"
+          ]
+        ]
+      },
+      {
+        "goal": "comment on a github issue",
+        "required": [
+          "github.add_issue_comment"
+        ],
+        "anyOf": [
+          [
+            "github.list_issues",
+            "github.get_issue",
+            "github.create_issue"
+          ],
+          [
+            "github.list_repos",
+            "github.get_repo"
+          ]
+        ]
+      },
+      {
+        "goal": "move a jira ticket to a done state",
+        "required": [
+          "jira.transitionIssue",
+          "jira.listTransitions"
+        ],
+        "anyOf": []
+      },
+      {
+        "goal": "merge a github pull request",
+        "required": [
+          "github.merge_pull_request",
+          "github.list_pull_requests"
+        ],
+        "anyOf": [
+          [
+            "github.list_repos",
+            "github.get_repo"
+          ]
+        ]
+      },
+      {
+        "goal": "open a support ticket for a customer",
+        "required": [
+          "acme-crm.createTicket"
+        ],
+        "anyOf": [
+          [
+            "acme-crm.listCustomers",
+            "acme-crm.getCustomer"
+          ]
+        ]
+      },
+      {
+        "goal": "send a direct message to a slack user by their email",
+        "required": [
+          "slack.open_dm",
+          "slack.get_user_by_email"
+        ],
+        "anyOf": []
+      }
+    ]
+  }
+}

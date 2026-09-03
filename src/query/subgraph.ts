@@ -66,8 +66,11 @@ export async function querySubgraph(
     includeAmbiguous || edge.provenance !== "ambiguous";
 
   // Seed by description similarity.
-  const texts = graph.tools.map(
-    (tool) => `${tool.name} ${tool.description}`.trim(),
+  // Seed text includes the server name: goals routinely name the system
+  // ("a jira ticket", "a slack channel"), and that word appears nowhere in
+  // a tool's own name or description.
+  const texts = graph.tools.map((tool) =>
+    `${tool.source.server} ${tool.name} ${tool.description}`.trim(),
   );
   const [goalVector, ...toolVectors] = await provider.embed([goal, ...texts]);
   const scored = graph.tools

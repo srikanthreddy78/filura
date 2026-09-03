@@ -54,13 +54,32 @@ export class GraphStore {
   async loadGraph(ref = "latest"): Promise<ToolGraph> {
     let hash = ref;
     if (ref === "latest") {
-      const pointer = JSON.parse(
-        await readFile(join(this.dir, "latest.json"), "utf8"),
-      ) as { hash: string };
+      let pointer: { hash: string };
+      try {
+        pointer = JSON.parse(
+          await readFile(join(this.dir, "latest.json"), "utf8"),
+        ) as { hash: string };
+      } catch {
+        throw new Error(
+          "No graph found. Build one first:\n" +
+            "  filura ingest <files...>   # MCP dumps or OpenAPI specs\n" +
+            "  filura build",
+        );
+      }
       hash = pointer.hash;
     }
-    const raw = await readFile(join(this.dir, `graph-${hash}.json`), "utf8");
-    return JSON.parse(raw) as ToolGraph;
+    try {
+      const raw = await readFile(join(this.dir, `graph-${hash}.json`), "utf8");
+      return JSON.parse(raw) as ToolGraph;
+    } catch {
+      const available = await this.listGraphs();
+      throw new Error(
+        `No snapshot "${hash}". ` +
+          (available.length > 0
+            ? `Available: ${available.join(", ")}`
+            : "Run `filura build` first."),
+      );
+    }
   }
 
   /** Snapshot hashes, oldest first by file mtime order of readdir (name-sorted fallback). */

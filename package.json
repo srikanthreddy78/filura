@@ -1,7 +1,7 @@
 {
   "name": "filura",
   "version": "0.2.0",
-  "description": "A directed tool graph for AI agents: tool selection, composition, and change safety across MCP servers and OpenAPI specs.",
+  "description": "Tool dependency infrastructure for AI agents: selection, composition, and change safety across MCP servers and OpenAPI specs.",
   "type": "module",
   "bin": {
     "filura": "./dist/cli.js"

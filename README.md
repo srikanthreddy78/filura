@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen.svg)](package.json)
 
-**Dependency intelligence and change safety for AI agent tools.** Nodes are tools; an edge `A → B` means an output field of A can satisfy a required input of B.
+**Tool dependency infrastructure for AI agents.** Nodes are tools; an edge `A → B` means an output field of A can satisfy a required input of B.
 
 MCP standardized how to *call* a tool. Nothing standardizes how tools *connect* — so an agent discovers that `createIssue` needs the `issueTypeId` only `listIssueTypes` produces by calling, failing, reading the error, and retrying. Filura infers those relationships statically and serves them.
 

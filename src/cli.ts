@@ -41,7 +41,7 @@ const program = new Command();
 program
   .name("filura")
   .description(
-    "A directed tool graph for AI agents: selection, composition, change safety.",
+    "Tool dependency infrastructure for AI agents: selection, composition, change safety.",
   )
   .version(FILURA_VERSION);
 

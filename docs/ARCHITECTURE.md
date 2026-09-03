@@ -17,6 +17,8 @@ flowchart LR
   F --> H[reachability]
   F --> I[redundancy]
   F --> J[diff]
+  F --> L[explain]
+  J --> M[CI policy check]
   G --> K[MCP server<br/>HTTP API<br/>CLI]
 ```
 
@@ -36,7 +38,7 @@ flowchart TD
   G -- yes --> H["edge: semantic"]
   G -- no --> I{"≥ 0.60"}
   I -- no --> X
-  I -- yes --> J["ambiguous band<br/>~20 pairs · 0.005%"]
+  I -- yes --> J["ambiguous band<br/>only candidates needing review"]
   J --> K{adjudicator<br/>available?}
   K -- yes --> L["LLM verdict →<br/>adjudicated or dropped"]
   K -- no --> M["kept as 'ambiguous'<br/>excluded from queries"]
@@ -65,13 +67,37 @@ Seeds and dependencies compete in a **single best-first priority queue**. Admitt
 
 Producers are only pulled for inputs the agent cannot supply itself: a required `project_id` needs an upstream tool, a required `title` does not.
 
+## Explainability and release policy
+
+The graph is not treated as an oracle. `explainInput` returns the input's
+status (`satisfied`, `awaiting-adjudication`, `agent-suppliable`, or
+`unresolved`) and separates trusted producers from pending candidates. This
+keeps evidence available to an operator without turning a low-confidence match
+into an agent instruction.
+
+`checkGraphChange` is the CI-facing counterpart to `diffGraphs`. It fails only
+on removed tools/outputs, broken trusted flows, or newly unreachable required
+identifiers. Input removals are warnings. This makes the gate useful on a pull
+request while avoiding false release blocks caused by an unavailable LLM
+adjudicator.
+
+```mermaid
+flowchart LR
+  A[approved graph snapshot] --> C[checkGraphChange]
+  B[proposed graph snapshot] --> C
+  C --> D{trusted regression?}
+  D -- no --> E[pass]
+  D -- yes --> F[non-zero exit<br/>GitHub annotations]
+  F --> G[edge evidence + blast radius]
+```
+
 ## Evaluation
 
 `eval/ground-truth.json` labels, for 45 identifier-shaped required inputs, every output field that genuinely carries that value — 97 correct producer pairs, derived by reading the fixture schemas rather than by recording Filura's output. A self-recorded baseline would score 1.0 and measure nothing.
 
 Scope excludes free-text inputs (`title`, `summary`, `jql`) where correctness is a matter of taste rather than fact.
 
-`filura eval` reports edge precision/recall/F1 plus goal-level retrieval, and the suite enforces both as regression floors — including an assertion that ground truth still names producers the system misses, which fails loudly if anyone ever regenerates the labels from output.
+`filura eval` reports edge precision/recall/F1 plus goal-level retrieval, and the suite enforces both as regression floors — including an assertion that ground truth still names producers the system misses, which fails loudly if anyone ever regenerates the labels from output. The suite also exercises the release gate with the deliberate `assignee` → `assignee_id` fixture break.
 
 ## Known limitations
 

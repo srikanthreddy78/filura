@@ -17,9 +17,11 @@ import { z } from "zod";
 import type { ToolGraph } from "./graph/types.js";
 import type { ToolIR } from "./ir/types.js";
 import { querySubgraph } from "./query/subgraph.js";
+import { explainInput } from "./query/explain.js";
 import { findDeadTools } from "./query/reachability.js";
 import type { EmbeddingProvider } from "./providers/embeddings/types.js";
 import { LocalEmbeddingProvider } from "./providers/embeddings/local.js";
+import { FILURA_VERSION } from "./version.js";
 
 export interface McpServerOptions {
   graph: ToolGraph;
@@ -94,7 +96,7 @@ export function createMcpServer(options: McpServerOptions): McpServer {
   const toolsById = new Map(graph.tools.map((tool) => [tool.id, tool]));
 
   const server = new McpServer(
-    { name: "filura", version: "0.1.0" },
+    { name: "filura", version: FILURA_VERSION },
     {
       instructions:
         `This workspace has ${graph.tools.length} tools across ` +
@@ -174,6 +176,60 @@ export function createMcpServer(options: McpServerOptions): McpServer {
       return {
         content: [{ type: "text" as const, text: sections.join("\n") }],
       };
+    },
+  );
+
+  server.registerTool(
+    "explain_input",
+    {
+      title: "Explain a tool input",
+      description:
+        "Show which tool outputs can satisfy one input, why each candidate " +
+        "is trusted or withheld, and whether the input must be supplied externally.",
+      inputSchema: {
+        tool_id: z
+          .string()
+          .describe("Fully qualified tool id, for example jira.createIssue."),
+        input: z
+          .string()
+          .describe("Input path on that tool, for example issueTypeId."),
+      },
+    },
+    async ({ tool_id, input }) => {
+      try {
+        const explanation = explainInput(graph, tool_id, input);
+        const render = (producer: (typeof explanation.trustedProducers)[number]) =>
+          `  ${producer.edge.from}.${producer.edge.fromField} → ` +
+          `${producer.edge.to}.${producer.edge.toField} ` +
+          `[${producer.edge.provenance}, ${producer.edge.score.toFixed(2)}]`;
+        const lines = [
+          `# ${tool_id}.${input}`,
+          `Status: ${explanation.status}`,
+          `Input: ${explanation.input.type}${explanation.input.required ? " (required)" : " (optional)"}`,
+          "",
+          explanation.guidance,
+        ];
+        if (explanation.trustedProducers.length > 0) {
+          lines.push(
+            "",
+            "## Trusted producers",
+            ...explanation.trustedProducers.map(render),
+          );
+        }
+        if (explanation.pendingCandidates.length > 0) {
+          lines.push(
+            "",
+            "## Pending adjudication — not used by default",
+            ...explanation.pendingCandidates.map(render),
+          );
+        }
+        return { content: [{ type: "text" as const, text: lines.join("\n") }] };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: "text" as const, text: (error as Error).message }],
+        };
+      }
     },
   );
 

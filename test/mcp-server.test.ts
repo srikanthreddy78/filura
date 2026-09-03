@@ -42,6 +42,7 @@ describe("filura MCP server", () => {
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
       "describe_catalog",
+      "explain_input",
       "find_tools",
     ]);
   });
@@ -108,5 +109,15 @@ describe("filura MCP server", () => {
     expect(text).toContain("Servers:");
     expect(text).toContain("Unusable without external input");
     expect(text).toContain("github.get_deployment");
+  });
+
+  it("explains dependency evidence without exposing pending candidates as trusted", async () => {
+    const text = await callText("explain_input", {
+      tool_id: "jira.createIssue",
+      input: "issueTypeId",
+    });
+    expect(text).toContain("Status: satisfied");
+    expect(text).toContain("Trusted producers");
+    expect(text).toContain("jira.listIssueTypes.issueTypes[].issueTypeId");
   });
 });

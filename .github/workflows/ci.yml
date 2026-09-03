@@ -21,12 +21,8 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
-      - name: Typecheck
-        run: npx tsc --noEmit
-      - name: Test
-        run: npm test
-      - name: Build
-        run: npm run build
+      - name: Verify
+        run: npm run verify
 
   evaluate:
     name: inference quality
@@ -38,11 +34,24 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Build CLI
+        run: npm run build
       - name: Ingest fixtures and build graph
         run: |
-          npx tsx src/cli.ts ingest fixtures/*.json
-          npx tsx src/cli.ts build
+          node dist/cli.js ingest fixtures/*.json
+          node dist/cli.js build
       - name: Evaluate against ground truth
-        run: npx tsx src/cli.ts eval --show-errors
+        run: node dist/cli.js eval --show-errors
       - name: Benchmark at 700 tools
-        run: npx tsx src/cli.ts bench --tools 700
+        run: node dist/cli.js bench --tools 700
+      - name: Prove the release gate catches a breaking schema change
+        shell: bash
+        run: |
+          BASELINE=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(".filura/latest.json", "utf8")).hash)')
+          node dist/cli.js ingest fixtures/v2/github.json fixtures/jira.json fixtures/slack.json fixtures/acme-crm.json
+          node dist/cli.js build
+          CANDIDATE=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(".filura/latest.json", "utf8")).hash)')
+          if node dist/cli.js check "$BASELINE" "$CANDIDATE" --format github; then
+            echo "Expected the deliberate breaking change to fail policy."
+            exit 1
+          fi

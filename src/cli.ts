@@ -19,9 +19,11 @@ import type { ToolIR } from "./ir/types.js";
 import { buildGraph } from "./graph/build.js";
 import { GraphStore } from "./graph/store.js";
 import { querySubgraph } from "./query/subgraph.js";
+import { explainInput } from "./query/explain.js";
 import { findDeadTools } from "./query/reachability.js";
 import { findRedundantClusters } from "./query/redundancy.js";
 import { diffGraphs } from "./query/diff.js";
+import { checkGraphChange } from "./policy/check.js";
 import {
   resolveAdjudicator,
   resolveEmbeddingProvider,
@@ -33,6 +35,7 @@ import { evaluateEdges } from "./eval/evaluate.js";
 import { evaluateRetrieval, type RetrievalSpec } from "./eval/retrieval.js";
 import { generateSyntheticCatalog } from "./eval/synthetic.js";
 import type { GroundTruth } from "./eval/types.js";
+import { FILURA_VERSION } from "./version.js";
 
 const program = new Command();
 program
@@ -40,7 +43,7 @@ program
   .description(
     "A directed tool graph for AI agents: selection, composition, change safety.",
   )
-  .version("0.1.0");
+  .version(FILURA_VERSION);
 
 program
   .command("ingest")
@@ -95,7 +98,10 @@ program
         : [];
       const known = new Set(existing.map((tool) => tool.id));
       for (const tool of tools) {
-        if (!known.has(tool.id)) existing.push(tool);
+        if (!known.has(tool.id)) {
+          known.add(tool.id);
+          existing.push(tool);
+        }
       }
       const path = await store.saveCatalog(existing);
       console.log(`${name}: ${tools.length} tools → ${path}`);
@@ -223,6 +229,44 @@ program
   });
 
 program
+  .command("explain")
+  .description("Explain how a tool input is satisfied and whether the evidence is trusted")
+  .argument("<tool>", "fully qualified tool id, for example jira.createIssue")
+  .argument("<input>", "input path, for example issueTypeId")
+  .option("--json", "raw JSON output")
+  .action(async (tool: string, input: string, options: { json?: boolean }) => {
+    const graph = await new GraphStore().loadGraph();
+    const explanation = explainInput(graph, tool, input);
+    if (options.json) {
+      console.log(JSON.stringify(explanation, null, 2));
+      return;
+    }
+    console.log(`${tool}.${input}`);
+    console.log(`  status: ${explanation.status}`);
+    console.log(`  ${explanation.guidance}`);
+    if (explanation.trustedProducers.length > 0) {
+      console.log("\nTrusted producers:");
+      for (const producer of explanation.trustedProducers) {
+        const edge = producer.edge;
+        console.log(
+          `  ${edge.from}.${edge.fromField} → ${edge.to}.${edge.toField} ` +
+            `[${edge.provenance} ${edge.score.toFixed(2)}]`,
+        );
+      }
+    }
+    if (explanation.pendingCandidates.length > 0) {
+      console.log("\nPending adjudication (not used by default):");
+      for (const candidate of explanation.pendingCandidates) {
+        const edge = candidate.edge;
+        console.log(
+          `  ${edge.from}.${edge.fromField} → ${edge.to}.${edge.toField} ` +
+            `[${edge.provenance} ${edge.score.toFixed(2)}]`,
+        );
+      }
+    }
+  });
+
+program
   .command("diff")
   .description("Blast radius between two graph snapshots")
   .argument("<before>", "snapshot hash (or 'latest')")
@@ -264,8 +308,67 @@ program
   });
 
 program
+  .command("check")
+  .description("Enforce a release policy between graph snapshots; exits non-zero on trusted breaking changes")
+  .argument("<before>", "approved baseline snapshot hash")
+  .argument("<after>", "proposed snapshot hash, or 'latest'")
+  .option("--format <format>", "text | json | github", "text")
+  .option("--warn-only", "report findings without failing the process")
+  .action(
+    async (
+      before: string,
+      after: string,
+      options: { format: string; warnOnly?: boolean },
+    ) => {
+      if (!["text", "json", "github"].includes(options.format)) {
+        throw new Error(`Unknown format "${options.format}". Use text, json, or github.`);
+      }
+      const store = new GraphStore();
+      const [baseline, proposed] = await Promise.all([
+        store.loadGraph(before),
+        store.loadGraph(after),
+      ]);
+      const check = checkGraphChange(baseline, proposed);
+
+      if (options.format === "json") {
+        console.log(JSON.stringify(check, null, 2));
+      } else if (options.format === "github") {
+        for (const finding of check.findings) {
+          const command = finding.severity === "error" ? "error" : "warning";
+          const title = `Filura ${finding.code}`.replace(/%/g, "%25");
+          const message = finding.message
+            .replace(/%/g, "%25")
+            .replace(/\r/g, "%0D")
+            .replace(/\n/g, "%0A");
+          console.log(`::${command} title=${title}::${message}`);
+        }
+        console.log(
+          `Filura check: ${check.summary.errors} errors, ${check.summary.warnings} warnings ` +
+            `(${check.passed ? "passed" : "failed"})`,
+        );
+      } else {
+        console.log(`Filura release check: ${before} → ${after}`);
+        console.log(
+          `  ${check.summary.errors} errors, ${check.summary.warnings} warnings, ` +
+            `${check.summary.breakingEdges} broken trusted flows, ` +
+            `${check.summary.newDeadInputs} newly unreachable inputs`,
+        );
+        if (check.findings.length === 0) {
+          console.log("\nPASS — no release-blocking dependency regressions.");
+        } else {
+          for (const finding of check.findings) {
+            console.log(`\n${finding.severity.toUpperCase()} [${finding.code}]`);
+            console.log(`  ${finding.message}`);
+          }
+        }
+      }
+      if (!check.passed && !options.warnOnly) process.exitCode = 1;
+    },
+  );
+
+program
   .command("serve")
-  .description("Serve the graph over HTTP (POST /subgraph, GET /health)")
+  .description("Serve the graph over HTTP (POST /subgraph, GET /explain, GET /health)")
   .option("--port <port>", "port", "4114")
   .action(async (options: { port: string }) => {
     const store = new GraphStore();
@@ -273,6 +376,7 @@ program
     const address = await startServer({ graph, port: Number(options.port) });
     console.log(`filura serving ${graph.tools.length} tools, ${graph.edges.length} edges at ${address}`);
     console.log(`  POST ${address}/subgraph  {"goal": "...", "maxTools": 15}`);
+    console.log(`  GET  ${address}/explain?tool=jira.createIssue&input=issueTypeId`);
   });
 
 program

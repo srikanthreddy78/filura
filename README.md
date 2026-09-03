@@ -4,13 +4,14 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen.svg)](package.json)
 
-**A dependency graph for AI agent tools.** Nodes are tools; an edge `A → B` means an output field of A can satisfy a required input of B.
+**Dependency intelligence and change safety for AI agent tools.** Nodes are tools; an edge `A → B` means an output field of A can satisfy a required input of B.
 
 MCP standardized how to *call* a tool. Nothing standardizes how tools *connect* — so an agent discovers that `createIssue` needs the `issueTypeId` only `listIssueTypes` produces by calling, failing, reading the error, and retrying. Filura infers those relationships statically and serves them.
 
 ## Measured results
 
-Not projections — `npm test` enforces these as regression floors, and CI runs them on every push.
+Not projections — `npm test` enforces regression floors, and CI runs the suite,
+evaluation, benchmark, and a deliberately failing schema-change gate on every push.
 
 **Edge inference** against 45 hand-labeled required inputs (97 correct producer pairs, labeled by reading the schemas, never recorded from Filura's own output):
 
@@ -28,7 +29,7 @@ Plus 4/4 genuinely unreachable inputs correctly left starved, and **9/10 goals**
 | ordered tool pairs | 489,300 |
 | type-compatible candidates | 434,778 |
 | edges inferred | 26,974 |
-| pairs needing an LLM call | 0.005% of candidates |
+| pairs needing an LLM call | 0 on this structural synthetic workload |
 | build wall time | 2.0s |
 | query latency | p50 18.5ms, p95 26.2ms |
 
@@ -68,7 +69,8 @@ That last block is what vector search over tool descriptions cannot produce.
 ## Quickstart
 
 ```bash
-npm install && npm test
+npm install
+npm run verify
 ```
 
 ```bash
@@ -88,8 +90,10 @@ npx tsx src/cli.ts query "create a jira ticket for a bug and assign it to someon
 | `ingest` / `ingest-mcp` | normalize MCP dumps, live MCP servers, or OpenAPI 3.x specs |
 | `build` | run edge inference, snapshot the graph |
 | `query` | retrieve the dependency closure for a goal |
+| `explain` | show evidence, provenance, and safety state for one input |
 | `inspect` | dead tools, redundancy clusters, catalog stats |
 | `diff` | blast radius between two snapshots |
+| `check` | CI policy gate for trusted breaking changes |
 | `eval` | precision/recall/F1 against ground truth |
 | `bench` | build + query cost at scale |
 | `serve` / `mcp` | HTTP API / MCP server |
@@ -111,6 +115,39 @@ Every edge carries provenance and a confidence score. **Unconfirmed `ambiguous` 
 ## Change safety
 
 ```
+
+## Release policy and explainability
+
+`diff` answers “what changed?”; `check` answers “may this release ship?”
+It exits non-zero for removed tools/outputs, broken **trusted** data flows, and
+newly unreachable required identifiers. It reports removed inputs as warnings,
+because callers may need review even when the changed tool remains callable.
+
+```bash
+filura check <approved-snapshot> latest --format github
+```
+
+Every inferred dependency is inspectable instead of opaque:
+
+```bash
+filura explain jira.createIssue issueTypeId
+```
+
+```text
+jira.createIssue.issueTypeId
+  status: satisfied
+
+Trusted producers:
+  jira.listIssueTypes.issueTypes[].issueTypeId → jira.createIssue.issueTypeId
+    [structural 1.00]
+
+Pending adjudication (not used by default):
+  github.create_issue.issue_number → jira.createIssue.issueTypeId [ambiguous 0.67]
+```
+
+The same read-only explanation is available from `GET /explain` and the
+`explain_input` MCP tool. Pending candidates are visible to reviewers but are
+never handed to agents as trusted guidance.
 BROKEN data flows (2):
   github.get_issue.assignee → github.create_issue.assignee  [was structural 1.00]
     blast radius: github.create_issue, github.add_issue_comment, jira.assignIssue, …
@@ -124,13 +161,20 @@ Two decisions that shaped the system, both driven by measurement:
 
 **Seeds and dependencies compete in one queue.** Admitting all similarity seeds up front spent the budget before any dependency was considered, so a weakly-relevant seed crowded out a tool that actually produced a required input. A single best-first queue fixed it, and the retrieval eval caught the regression.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design, diagrams, and evaluation methodology.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design and
+evaluation methodology. See [docs/ENTERPRISE_READINESS.md](docs/ENTERPRISE_READINESS.md)
+for the client assessment, rollout plan, technical decisions, and explicit
+production gaps.
 
 ## Limitations
 
 The default embedder is lexical, not semantic: it cannot connect "move a ticket to a done state" with `transitionIssue`, which is the one retrieval failure in the eval set. Hosted embeddings target exactly that gap.
 
 Accuracy is measured against fixtures authored alongside the system. Performance on a large real-world catalog with inconsistent cross-team naming is unknown, and is the most important open question.
+
+The local server is intentionally a single-process localhost service. Hosted
+multi-tenancy, authentication, audit logs, waivers, and runtime-observed output
+contracts are planned production capabilities, not claims this repository makes.
 
 ## Project layout
 
@@ -140,6 +184,7 @@ Accuracy is measured against fixtures authored alongside the system. Performance
 | `src/match/` | the three inference passes |
 | `src/graph/` | build orchestration, content-addressed snapshot store |
 | `src/query/` | subgraph retrieval, reachability, redundancy, diff |
+| `src/policy/` | deterministic CI release gate |
 | `src/eval/` | ground-truth evaluation harness and synthetic benchmark |
 | `src/mcp-server.ts` | Filura as an MCP server |
 | `eval/ground-truth.json` | hand-labeled correctness data |

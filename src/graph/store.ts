@@ -82,7 +82,7 @@ export class GraphStore {
     }
   }
 
-  /** Snapshot hashes, oldest first by file mtime order of readdir (name-sorted fallback). */
+  /** Snapshot hashes in deterministic lexical order. */
   async listGraphs(): Promise<string[]> {
     let entries: string[];
     try {

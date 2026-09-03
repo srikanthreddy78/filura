@@ -1,6 +1,6 @@
 {
   "name": "filura",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A directed tool graph for AI agents: tool selection, composition, and change safety across MCP servers and OpenAPI specs.",
   "type": "module",
   "bin": {
@@ -13,7 +13,11 @@
   ],
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run typecheck && npm test && npm run build",
     "dev": "tsx src/cli.ts",
+    "eval": "tsx src/cli.ts eval",
+    "bench": "tsx src/cli.ts bench --tools 700",
     "test": "vitest run",
     "test:watch": "vitest"
   },

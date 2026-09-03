@@ -1,5 +1,7 @@
 // Filura public library surface.
 
+export { FILURA_VERSION } from "./version.js";
+
 export * from "./ir/types.js";
 export { flattenSchema } from "./ir/flatten.js";
 export { normalizeMcpTools } from "./ir/normalize-mcp.js";
@@ -19,10 +21,14 @@ export { createMcpServer, startMcpServer } from "./mcp-server.js";
 
 export { querySubgraph } from "./query/subgraph.js";
 export type { SubgraphOptions, SubgraphResult } from "./query/subgraph.js";
+export { explainInput } from "./query/explain.js";
+export type { InputExplanation } from "./query/explain.js";
 export { findDeadTools } from "./query/reachability.js";
 export { findRedundantClusters } from "./query/redundancy.js";
 export { diffGraphs } from "./query/diff.js";
 export type { GraphDiff } from "./query/diff.js";
+export { checkGraphChange } from "./policy/check.js";
+export type { CheckFinding, GraphCheck } from "./policy/check.js";
 
 export { LocalEmbeddingProvider } from "./providers/embeddings/local.js";
 export {

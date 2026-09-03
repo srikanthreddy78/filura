@@ -27,6 +27,25 @@ describe("server", () => {
     const body = response.json();
     expect(body.status).toBe("ok");
     expect(body.tools).toBeGreaterThan(0);
+    expect(body.version).toBe("0.2.0");
+  });
+
+  it("explains trusted dependency evidence over HTTP", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/explain?tool=jira.createIssue&input=issueTypeId",
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.status).toBe("satisfied");
+    expect(body.trustedProducers[0].edge.from).toBe("jira.listIssueTypes");
+  });
+
+  it("rejects malformed or unknown explain requests", async () => {
+    const malformed = await app.inject({ method: "GET", url: "/explain?tool=jira.createIssue" });
+    expect(malformed.statusCode).toBe(400);
+    const unknown = await app.inject({ method: "GET", url: "/explain?tool=nope&input=id" });
+    expect(unknown.statusCode).toBe(404);
   });
 
   it("serves a subgraph with tool schemas, reasons, and edges", async () => {
